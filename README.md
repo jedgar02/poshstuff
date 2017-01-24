@@ -1,2 +1,2 @@
 # poshstuff
-subdry powershell scripts and modules
+sundry powershell scripts and modules
