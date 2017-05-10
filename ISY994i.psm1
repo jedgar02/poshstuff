@@ -1,4 +1,4 @@
-#Requires -Version 5.0
+﻿#Requires -Version 5.0
 
 #Set-StrictMode -Version latest
 
@@ -362,7 +362,8 @@ END
    The xml formatted strings ouput from the Register-ForISYEvent function are converted to xmlelement objects.
    Each event has the following properties:
    TimeStamp : timestamp of when the event occurred in 'yyyyMMddTHHmmssffff' format where HH is 24 hour and ffff is milliseconds
-        Note TimeStamp will NOT be present if the Register-ForISYEvent function was called with the -raw switch
+        Note1: To covert to datetime object use [datetime]::ParseExact("20160913T1833374716",'yyyyMMddTHHmmssffff', $null)
+        Note2: TimeStamp will NOT be present if the Register-ForISYEvent function was called with the -raw switch
    seqnum    : Unique message sequence number incremented with each message for this subscription 
    sid       : Subscription ID assigned by the ISY (example uuid:67)
    control   : event controls
@@ -3834,7 +3835,7 @@ foreach ($i in 0,1)
 {
     if ($choices[$i])
     {
-        if (!(Test-NetConnection -ComputerName ($choices[$i].split(':'))[0] -InformationLevel Quiet))
+        if (!(Test-Connection -ComputerName ($choices[$i].split(':'))[0] -count 1 -Quiet))
         {
             if (($i -eq 0))
             {
@@ -5305,27 +5306,11 @@ function Update-ISYDBXMLFile {
                                             [pscustomobject]@{name = 'PLM';LocalName = 'node';address = (Get-PLMAddress)}
 
         $Script:list_of_isy_scenes = $isydb.nodes.group | Select-Object -Property name,LocalName,address
-
-#endregion
+#endregion create database and vars
 
 #region tabexpansion
 
-#region tabexpansion vars
-
-<#
-        function quote {
-        param([string]$text)
-        if ($text -like '* *') {$text = "'" + $text + "'"}
-        return $text
-        }
-                
-        Got the tab completion to surround the name with '' if the name contains a space. 
-        This only works if the quote function is defined in the scriptblock due to scoping. 
-        One other approach that also works assigns a $qname variable using the same logic 
-        as the quote function in the pipeline following "where name -like $wordToComplete* |"
-        and assigning $qname to CompletionText and ListItem of the CompletionResult object.
-        Function approach seems faster and you do not have to mess with the pipeline.
-#>
+#region tabexpansion scriptblocks
 
         $Completion_DeviceName = {
  
@@ -5371,45 +5356,18 @@ function Update-ISYDBXMLFile {
                 New-Object System.Management.Automation.CompletionResult (quote $_.name), (quote $_.name), 'ParameterValue', ('{0} ({1})' -f $_.name, $_.address)}
         }
 
-        if (-not $global:tabexp2options) { $global:tabexp2options = @{CustomArgumentCompleters = @{};NativeArgumentCompleters = @{}}}
-        $global:tabexp2options['CustomArgumentCompleters']['Set-InsteonDevice:Name'] = $Completion_DeviceName
-        $global:tabexp2options['CustomArgumentCompleters']['Set-ISYScene:Name'] = $Completion_SceneName
-        $global:tabexp2options['CustomArgumentCompleters']['Get-InsteonDevice:Name'] = $Completion_DeviceName
-        $global:tabexp2options['CustomArgumentCompleters']['Get-ISYScene:Name'] = $Completion_SceneName
-        $global:tabexp2options['CustomArgumentCompleters']['Invoke-ISYProgram:Name'] = $Completion_ProgramName
-        $global:tabexp2options['CustomArgumentCompleters']['Set-X10Device:Name'] = $Completion_X10Device
-
-        $tab2optionsline = 'End { if ($null -ne $options) { $options += $global:tabexp2options} else {$options = $global:tabexp2options} #moduleisy994iwuzhere'
-
-#endregion tabexpansion vars
+#endregion tabexpansion scriptblocks
 
         if ($currentsettings.tabexp -eq $true)
-            {
-                $function:tabexpansion2 = $function:tabexpansion2 -replace 'End\r\n{', $tab2optionsline
-            }
-        else
-            {
-            if ($null -ne $global:tabexp2options)
-                {
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Set-InsteonDevice:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Set-ISYScene:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Get-InsteonDevice:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Get-ISYScene:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Resolve-Device:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Resolve-Scene:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Invoke-ISYProgram:Name')
-                    $global:tabexp2options['CustomArgumentCompleters'].Remove('Set-X10Device:Name')
-<#
-                if ($function:tabexpansion2 | select-string "#moduleisy994iwuzhere" ) 
-                    {
-                        $function:tabexpansion2 -replace $tab2line, 'End`n{'
-                    }
-#>
-                }
-            }
-    
+        {
+            Register-ArgumentCompleter -CommandName Set-InsteonDevice,Get-InsteonDevice -ParameterName Name -ScriptBlock $Completion_DeviceName
+            Register-ArgumentCompleter -CommandName Set-ISYScene,Get-ISYScene -ParameterName Name -ScriptBlock $Completion_SceneName
+            Register-ArgumentCompleter -CommandName Invoke-ISYProgram -ParameterName Name -ScriptBlock $Completion_ProgramName
+            Register-ArgumentCompleter -CommandName Set-X10Device -ParameterName Name -ScriptBlock $Completion_X10Device
+        }
+#endregion tabexpansion    
+
     }
-#endregion tabexpansion
 
 }
 #end function Update-ISYDBXMLFile
